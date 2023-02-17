@@ -2,26 +2,25 @@
 set -o nounset -o errexit
 
 fatal() { echo "error:" "$@" >&2; exit 1; }
-ci_check() { [ "${CI:-}" == true ]; }
-github_actions_check() { [ "${GITHUB_ACTIONS:-}" == true ]; }
+ci_check() { [ "${CI:-}" = true ]; }
+github_actions_check() { [ "${GITHUB_ACTIONS:-}" = true ]; }
 
 github() {
   github_main() {
-    local owner repo ref
     github_parse_repo "$@"
     echo github!
-    echo owner=$owner
-    echo repo=$repo
-    echo ref=$ref
+    echo "owner=$owner"
+    echo "repo=$repo"
+    echo "ref=$ref"
   }
 
 
   github_parse_repo() {
-    local parse="${1#github:}"
+    parse="${1#github:}"
     owner="${parse%%/*}"
-    parse="${parse#$owner/}"
+    parse="${parse#"$owner"/}"
     repo="${parse%%#*}"
-    parse="${parse#$repo#}"
+    parse="${parse#"$repo"#}"
     ref="${parse}"
   }
 
