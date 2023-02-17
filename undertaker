@@ -27,11 +27,24 @@ github() {
   github_main "$@"
 }
 
+tag_trigger() {
+  echo tag event for tag "$1"
+}
+
 running_in_github_actions() {
-  echo "EVENT=$GITHUB_EVENT_NAME"
-  # case "$GITHUB_EVENT_NAME" in
-  #   workflow_
-  # esac
+  case "$GITHUB_EVENT_NAME" in
+    push)
+      case "$GITHUB_REF" in
+        refs/tags/*)
+          tag_trigger "github.com:$GITHUB_REPOSITORY.git#$GITHUB_REF"
+          ;;
+        *)
+          fatal "unknown github ref $GITHUB_REF"
+      esac
+      ;;
+    *)
+      fatal "unknown event $GITHUB_EVENT_NAME"
+  esac
 }
 
 main() {
