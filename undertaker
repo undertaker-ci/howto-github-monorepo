@@ -1,0 +1,54 @@
+#!/usr/bin/env sh
+set -o nounset -o errexit
+
+fatal() { echo "error:" "$@" >&2; exit 1; }
+ci_check() { [ "${CI:-}" == true ]; }
+github_actions_check() { [ "${GITHUB_ACTIONS:-}" == true ]; }
+
+github() {
+  github_main() {
+    local owner repo ref
+    github_parse_repo "$@"
+    echo github!
+    echo owner=$owner
+    echo repo=$repo
+    echo ref=$ref
+  }
+
+
+  github_parse_repo() {
+    local parse="${1#github:}"
+    owner="${parse%%/*}"
+    parse="${parse#$owner/}"
+    repo="${parse%%#*}"
+    parse="${parse#$repo#}"
+    ref="${parse}"
+  }
+
+  github_main "$@"
+}
+
+running_in_github_actions() {
+  echo "EVENT=$GITHUB_EVENT_NAME"
+  # case "$GITHUB_EVENT_NAME" in
+  #   workflow_
+  # esac
+}
+
+main() {
+  if ci_check; then
+    if github_actions_check; then
+      running_in_github_actions "$@"
+    else
+      fatal "don't know how to not run in github actions"
+    fi
+  else
+    fatal "don't know how to not run in ci"
+  fi
+  # case "$1" in
+  #   github:*/*\#*) github "$@" ;;
+  #   *) echo unknown! ;;
+  # esac
+}
+
+main "$@"
