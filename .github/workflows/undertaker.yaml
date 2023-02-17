@@ -1,0 +1,15 @@
+name: Undertaker
+
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  undertaker:
+    runs-on: alpine-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+      - name: Run Undertaker
+        # TODO: There should be an undertaker github action
+        run: ./undertaker
