@@ -27,16 +27,66 @@ github() {
   github_main "$@"
 }
 
-tag_trigger() {
-  echo tag event for tag "$1"
+actions_for_trigger() {
+  readonly state_repo="$1"
+  readonly trigger="$2"
+}
+
+trigger() {
+  readonly state_repo="$1"
+  yq --output-format=json undertaker.yaml | jq -rc --arg trigger "$2" '
+    def expand_string_trigger($trigger):
+      . as $regex | { env: ($trigger | capture($regex)) }
+    ;
+
+    def expand_triggered_by($trigger):
+      del(.["triggered-by"]) as $body
+      | .["triggered-by"]
+      | map((expand_string_trigger($trigger)) * $body)
+      | .[0:1]
+    ;
+
+    def expand_github_string_action($env):
+      capture("github.com:(?<owner>[^/]+)/(?<repo>[^#]+).git#(?<ref>[^:]+):(?<script>.+)")
+      | [
+          ($env | to_entries | map("\(.key)=\(.value)")),
+          [
+            "sh",
+            "-c",
+            ("curl -fsL https://raw.githubusercontent.com/\(.owner)/\(.repo)/\(.ref)/\(.script) | sh" | @sh)
+          ]
+        ]
+      | flatten | join(" ")
+    ;
+
+    def expand_string_action($env):
+      expand_github_string_action($env)
+    ;
+
+    def expand_action($env):
+      expand_string_action($env)
+    ;
+
+    .workflow
+      | with_entries(.value |= (
+        expand_triggered_by($trigger)
+        | map(
+          .env as $env
+          | .actions
+          | map(expand_action($env)))
+        | flatten))
+      | to_entries[].value[]
+  ' | while read -r command; do eval "$command"; done
 }
 
 running_in_github_actions() {
+  readonly state="$1"
+
   case "$GITHUB_EVENT_NAME" in
     push)
       case "$GITHUB_REF" in
         refs/tags/*)
-          tag_trigger "github.com:$GITHUB_REPOSITORY.git#$GITHUB_REF"
+          trigger "$state" "github.com:$GITHUB_REPOSITORY.git#$GITHUB_REF"
           ;;
         *)
           fatal "unknown github ref $GITHUB_REF"
